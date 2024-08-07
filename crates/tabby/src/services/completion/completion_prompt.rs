@@ -76,6 +76,18 @@ impl PromptBuilder {
     }
 }
 
+/// 获取默认的后缀字符串。
+///
+/// 如果`suffix`不为空且不为空字符串，则返回`suffix`；
+/// 否则，返回一个换行符`"\n"`作为默认的后缀字符串。
+///
+/// # 参数
+///
+/// * `suffix` - 可选的后缀字符串。
+///
+/// # 返回值
+///
+/// * `String` - 默认的后缀字符串。
 fn get_default_suffix(suffix: Option<String>) -> String {
     suffix
         .filter(|s| !s.is_empty())
@@ -91,6 +103,21 @@ fn rewrite_with_snippets(language: &str, segments: Segments, snippets: &[Snippet
     }
 }
 
+/// 构建一个带有前缀的注释文本。
+///
+/// 该函数首先检查`snippets`列表是否为空，如果为空，则直接返回`prefix`。
+/// 否则，该函数获取`language`对应的语言对象的行注释字符，并使用该字符为每一行代码片段添加注释。
+/// 然后，将所有注释行连接起来，并将其与`prefix`拼接在一起作为最终的注释文本。
+///
+/// # 参数
+///
+/// * `language` - 语言字符串。
+/// * `prefix` - 前缀字符串。
+/// * `snippets` - 代码片段列表。
+///
+/// # 返回值
+///
+/// * `String` - 带有前缀的注释文本。
 fn build_prefix(language: &str, prefix: &str, snippets: &[Snippet]) -> String {
     if snippets.is_empty() {
         return prefix.to_owned();

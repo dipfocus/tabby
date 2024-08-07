@@ -14,6 +14,9 @@ pub fn tokenize_code(text: &str) -> Vec<String> {
 }
 
 lazy_static! {
+    /// 代码分词器。
+    ///
+    /// 该分词器使用正则表达式 `\w+` 匹配单词，并将长于 64 个字符的单词过滤掉。
     static ref CODE_TOKENIZER: TextAnalyzer = {
         TextAnalyzer::builder(RegexTokenizer::new(r"(?:\w+)").unwrap())
             .filter(RemoveLongFilter::limit(64))

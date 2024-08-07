@@ -119,6 +119,17 @@ impl RepositoryConfig {
         Self::canonicalize_url(&self.git_url)
     }
 
+    /// 将URL转换为规范化形式。
+    ///
+    /// 该函数接受一个字符串`url`作为输入，并返回一个规范化的URL字符串。
+    ///
+    /// # 参数
+    ///
+    /// * `url` - 要转换的URL。
+    ///
+    /// # 返回值
+    ///
+    /// * `String` - 规范化的URL字符串。
     pub fn canonicalize_url(url: &str) -> String {
         let url = url.strip_suffix(".git").unwrap_or(url);
         url::Url::parse(url)

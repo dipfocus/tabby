@@ -17,6 +17,19 @@ pub mod fields {
     pub const CHUNK_START_LINE: &str = "chunk_start_line";
 }
 
+/// 创建一个用于查询编程语言的终端查询对象。
+///
+/// 该函数创建一个终端查询，该查询在`schema.field_chunk_attributes`字段上搜索给定的`language`。
+///
+/// 如果输入的语言是JavaScript或TypeScript相关的语言，则会被映射为"javascript-typescript"。
+///
+/// # 参数
+///
+/// * `language` - 要搜索的编程语言。
+///
+/// # 返回值
+///
+/// * `Box<TermQuery>` - 一个包含在`schema.field_chunk_attributes`字段上搜索给定`language`的终端查询对象。
 fn language_query(language: &str) -> Box<TermQuery> {
     let schema = IndexSchema::instance();
     let language = match language {
@@ -32,6 +45,18 @@ fn language_query(language: &str) -> Box<TermQuery> {
     Box::new(TermQuery::new(term, IndexRecordOption::Basic))
 }
 
+/// 创建一个用于查询代码片段主体的查询对象。
+///
+/// 该函数创建一个布尔查询，该查询包含多个终端查询，
+/// 每个终端查询都是对`schema.field_chunk_tokens`字段上的一个单词进行查询。
+///
+/// # 参数
+///
+/// * `tokens` - 代码片段主体的单词列表。
+///
+/// # 返回值
+///
+/// * `Box<dyn Query>` - 一个包含多个终端查询的布尔查询对象，用于查询代码片段主体。
 pub fn body_query(tokens: &[String]) -> Box<dyn Query> {
     let schema = IndexSchema::instance();
     let subqueries: Vec<Box<dyn Query>> = tokens
@@ -48,6 +73,17 @@ pub fn body_query(tokens: &[String]) -> Box<dyn Query> {
     Box::new(BooleanQuery::union(subqueries))
 }
 
+/// 创建一个用于查询Git URL的终端查询对象。
+///
+/// 该函数创建一个终端查询，该查询在`schema.field_chunk_attributes`字段上搜索给定的`git_url`。
+///
+/// # 参数
+///
+/// * `git_url` - 要搜索的Git URL。
+///
+/// # 返回值
+///
+/// * `Box<TermQuery>` - 一个包含在`schema.field_chunk_attributes`字段上搜索给定`git_url`的终端查询对象。
 fn git_url_query(git_url: &str) -> Box<TermQuery> {
     let schema = IndexSchema::instance();
     let mut term =
@@ -64,6 +100,23 @@ fn filepath_query(filepath: &str) -> Box<TermQuery> {
     Box::new(TermQuery::new(term, IndexRecordOption::Basic))
 }
 
+/// 创建一个代码搜索查询对象。
+///
+/// 该函数首先创建一个用于查询语料库的查询对象，然后创建一个用于查询Git URL的查询对象。
+/// 然后，根据输入的`query`对象中的属性，创建相应的子查询并将其添加到布尔查询中。
+///
+/// 如果输入的`query`对象中包含语言属性，则会创建一个用于查询编程语言的查询对象并将其添加到布尔查询中。
+///
+/// 如果输入的`query`对象中包含文件路径属性，则会创建一个用于排除文件的查询对象并将其添加到布尔查询中。
+///
+/// # 参数
+///
+/// * `query` - 代码搜索查询对象。
+/// * `chunk_tokens_query` - 用于查询代码片段的查询对象。
+///
+/// # 返回值
+///
+/// * `BooleanQuery` - 一个包含多个子查询的布尔查询对象。
 pub fn code_search_query(
     query: &CodeSearchQuery,
     chunk_tokens_query: Box<dyn Query>,

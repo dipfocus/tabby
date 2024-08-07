@@ -184,6 +184,17 @@ impl IndexSchema {
         ])
     }
 
+    /// 创建一个用于查询语料库的查询对象。
+    ///
+    /// 该函数创建一个终端查询，该查询在`self.field_corpus`字段上搜索给定的`corpus`文本。
+    ///
+    /// # 参数
+    ///
+    /// * `corpus` - 要搜索的语料库文本。
+    ///
+    /// # 返回值
+    ///
+    /// * `Box<dyn Query>` - 一个包含在`self.field_corpus`字段上搜索给定`corpus`文本的查询对象。
     pub fn corpus_query(&self, corpus: &str) -> Box<dyn Query> {
         Box::new(TermQuery::new(
             Term::from_field_text(self.field_corpus, corpus),
@@ -213,6 +224,29 @@ lazy_static! {
     static ref INDEX_SCHEMA: IndexSchema = IndexSchema::new();
 }
 
+/// 将嵌入向量二值化。
+///
+/// 该函数将`embedding`迭代器中的每个值转换为一个字符串，并根据值的大小来确定字符串的形式。
+///
+/// # 示例
+///
+/// ```
+/// let embedding = vec![0.5, -0.3, 1.2, -0.8];
+///
+/// let binarized_embedding = binarize_embedding(embedding.iter());
+///
+/// let result: Vec<String> = binarized_embedding.collect();
+///
+/// assert_eq!(result, vec!["embedding_one_0", "embedding_zero_1", "embedding_one_2", "embedding_zero_3"]);
+/// ```
+///
+/// # 参数
+///
+/// * `embedding` - 要二值化的嵌入向量迭代器。
+///
+/// # 返回值
+///
+/// * `impl Iterator<Item = String>` - 二值化后的嵌入向量迭代器，其中每个元素都是一个字符串。
 pub fn binarize_embedding<'a>(
     embedding: impl Iterator<Item = &'a f32> + 'a,
 ) -> impl Iterator<Item = String> + 'a {
@@ -234,6 +268,31 @@ pub fn embedding_tokens_query<'a>(
     new_multiterms_const_query(schema.field_chunk_tokens, embedding_dims, iter)
 }
 
+/// 创建一个具有固定分数的多术语布尔查询。
+///
+/// 该函数创建一个布尔查询，其中包含一个或多个子查询，每个子查询都是一个固定分数的终端查询。
+///
+/// # 示例
+///
+/// ```
+/// let field = Field::new_text("title");
+/// let embedding_dims = 100;
+/// let terms = vec!["rust", "programming", "language"];
+///
+/// let query = new_multiterms_const_query(field, embedding_dims, terms.into_iter().map(Cow::from));
+///
+/// assert_eq!(query.to_string(), "title:rust title:programming title:language");
+/// ```
+///
+/// # 参数
+///
+/// * `field` - 要在其上创建查询的字段。
+/// * `embedding_dims` - 嵌入维度，用于计算每个子查询的固定分数。
+/// * `terms` - 要在查询中包含的术语迭代器。
+///
+/// # 返回值
+///
+/// * `BooleanQuery` - 一个布尔查询，其中包含一个或多个具有固定分数的终端查询。
 fn new_multiterms_const_query<'a>(
     field: Field,
     embedding_dims: usize,

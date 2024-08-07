@@ -24,6 +24,18 @@ impl Default for StopConditionFactory {
 type CachedTrie<'a> = dashmap::mapref::one::Ref<'a, String, Trie<u8>>;
 
 impl StopConditionFactory {
+    /// 创建一个`StopCondition`对象，用于检测文本中的停止词。
+    ///
+    /// 该函数根据输入的`language`对象创建一个停止词树，并使用该树来检测`text`中的停止词。
+    ///
+    /// # 参数
+    ///
+    /// * `text` - 要检测停止词的文本。
+    /// * `language` - 可选的语言对象，用于创建特定语言的停止词树。
+    ///
+    /// # 返回值
+    ///
+    /// * `StopCondition` - 一个用于检测文本中停止词的对象。
     pub fn create(&self, text: &str, language: Option<&'static Language>) -> StopCondition {
         if let Some(language) = language {
             StopCondition::new(self.get_trie(language), text)

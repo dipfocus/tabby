@@ -42,6 +42,20 @@ impl CodeSearchImpl {
         }
     }
 
+/// 使用给定的查询执行搜索并返回结果。
+///
+/// 该函数首先创建一个搜索器，然后使用给定的查询执行搜索并获取前`limit`个结果。
+/// 然后，根据结果中的文档地址，获取对应的文档并将其添加到结果向量中。
+///
+/// # 参数
+///
+/// * `reader` - 索引读取器对象。
+/// * `q` - 查询对象。
+/// * `limit` - 搜索结果限制。
+///
+/// # 返回值
+///
+/// * `Result<Vec<(f32, TantivyDocument)>>` - 包含搜索结果的向量，其中每个元素是一个元组，包含文档的评分和文档本身。
     async fn search_with_query(
         &self,
         reader: &IndexReader,
@@ -240,6 +254,33 @@ fn get_json_text_field<'a>(doc: &'a TantivyDocument, field: schema::Field, name:
         .unwrap()
 }
 
+/// 查找与搜索词最接近的匹配项。
+///
+/// 将`search_term`解析为`GitUrl`，并返回具有与`GitUrl`相同名称且排序最高的`RepositoryConfig`的`git_url`。
+///
+/// # 示例
+///
+/// ```
+/// let search_term = "rust";
+/// let search_input = vec![
+///     RepositoryConfig { git_url: "https://github.com/rust-lang/rust.git" },
+///     RepositoryConfig { git_url: "https://github.com/rust-lang/rustfmt.git" },
+///     RepositoryConfig { git_url: "https://github.com/rust-lang/cargo.git" },
+/// ];
+///
+/// let closest_match = closest_match(search_term, &search_input);
+///
+/// assert_eq!(closest_match, Some("https://github.com/rust-lang/rust.git"));
+/// ```
+///
+/// # 参数
+///
+/// * `search_term` - 要搜索的词。
+/// * `search_input` - `RepositoryConfig`引用迭代器。
+///
+/// # 返回值
+///
+/// * `Option<&str>` - 如果找到匹配项，则返回匹配项的`git_url`，否则返回`None`。
 fn closest_match<'a>(
     search_term: &'a str,
     search_input: impl IntoIterator<Item = &'a RepositoryConfig>,
