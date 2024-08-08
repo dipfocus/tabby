@@ -13,6 +13,11 @@ pub struct LlamaCppSupervisor {
 }
 
 impl LlamaCppSupervisor {
+    /// 该函数用于创建一个 LlamaCppSupervisor 实例，用于管理 llama-server 进程。
+    /// 在创建实例时，它会尝试查找 llama-server 二进制文件，如果未找到则会 panic。
+    /// 然后，它会获取可用端口、构建命令并启动 llama-server 进程。
+    /// 在进程启动后，会监控其退出状态码，如果退出码不为 0，则会记录警告信息并等待一秒后重试。
+    ///
     pub fn new(
         name: &'static str,
         num_gpu_layers: u16,
@@ -136,6 +141,17 @@ impl LlamaCppSupervisor {
     }
 }
 
+/// 查找二进制文件名
+///
+/// 该函数尝试查找当前可执行文件所在目录中的二进制文件名。
+/// 它首先获取当前可执行文件的路径，然后获取其父目录。
+/// 接下来，它尝试使用 `which` 函数查找名为 "llama-server" 的二进制文件，并将其路径作为可选值返回。
+/// 如果找不到该二进制文件，则函数会在当前可执行文件所在目录中遍历文件，
+/// 并查找名称以 "llama-server" 开头的文件，并将其路径作为可选值返回。
+///
+/// 返回值：
+/// - `Some(String)`：如果找到二进制文件，则返回其路径作为 `String`。
+/// - `None`：如果没有找到二进制文件，则返回 `None`。
 fn find_binary_name() -> Option<String> {
     let current_exe = std::env::current_exe().expect("Failed to get current executable path");
     let binary_dir = current_exe

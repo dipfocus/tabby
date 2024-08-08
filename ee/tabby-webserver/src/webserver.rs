@@ -85,6 +85,7 @@ impl Webserver {
         )
         .await;
 
+        tracing::debug!("Webserver started");
         ws
     }
 

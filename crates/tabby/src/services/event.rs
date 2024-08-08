@@ -14,6 +14,18 @@ use tokio::{
 use tracing::error;
 
 lazy_static! {
+    /// `WRITER` 是一个静态引用，用于发送字符串。
+    ///
+    /// 它通过以下方式工作：
+    /// 1. 创建 `tx` 和 `rx`，用于发送和接收字符串。
+    /// 2. 使用 `tokio::spawn` 启动一个异步任务。
+    /// 3. 在异步任务中，创建一个 `EventWriter` 实例，并设置写入文件的路径。
+    /// 4. 创建一个时间间隔 `interval`，每隔 5 秒执行一次 `writer.flush().await`。
+    /// 5. 进入一个无限循环。
+    /// 6. 使用 `tokio::select!` 来选择接收通道中的消息或时间间隔的触发。
+    /// 7. 如果接收到消息，调用 `writer.write_line(content).await` 来写入文件。
+    /// 8. 如果时间间隔触发，调用 `writer.flush().await` 来刷新缓冲区。
+    /// 9. 如果接收到 `None`，表示通道关闭，退出循环。
     static ref WRITER: UnboundedSender<String> = {
         let (tx, mut rx) = unbounded_channel::<String>();
 
@@ -65,6 +77,24 @@ impl EventWriter {
             .map(|fname| self.events_dir.join(fname))
     }
 
+    /// 异步写入一行内容到事件文件中。
+    ///
+    /// 参数:
+    /// - `content`: 要写入的内容。
+    ///
+    /// 返回值:
+    /// - 无。
+    ///
+    /// 具体实现:
+    /// 1. 获取当前的时间，并使用指定的格式（%Y-%m-%d.json）格式化为字符串。
+    /// 2. 如果当前的文件名不等于指定的文件名，则执行以下步骤：
+    ///    - 如果存在写入器 `writer`，则刷新缓冲区。
+    ///    - 打开或创建一个新的事件文件，并创建一个写入器 `writer`。
+    ///    - 更新文件名和写入器。
+    /// 3. 获取写入器 `writer`，并写入指定的内容，并在末尾添加换行符。
+    ///
+    /// 注意:
+    /// - 此方法使用异步操作，需要在异步环境中调用。
     async fn write_line(&mut self, content: String) {
         let now = Utc::now();
         let fname = now.format("%Y-%m-%d.json");
@@ -102,6 +132,13 @@ impl EventWriter {
 struct EventService;
 
 impl EventLogger for EventService {
+    /// 将日志条目序列化为 JSON 格式，并将其写入文件。
+    ///
+    /// 参数:
+    /// - `x`: 要写入文件的日志条目。
+    ///
+    /// 返回值:
+    /// 无。
     fn write(&self, x: LogEntry) {
         let json = match serdeconv::to_json_string(&x) {
             Ok(json) => json,

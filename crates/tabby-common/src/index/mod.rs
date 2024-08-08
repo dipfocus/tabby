@@ -58,6 +58,19 @@ impl IndexSchema {
         &INDEX_SCHEMA
     }
 
+    /// 创建一个新的 `Schema` 实例，并返回一个包含所有字段的 `SchemaBuilder` 实例。
+    ///
+    /// 该函数创建了以下字段：
+    /// - `corpus`：一个字符串字段，用于存储文档的内容。
+    /// - `source_id`：一个字符串字段，用于存储文档的来源。
+    /// - `id`：一个字符串字段，用于存储文档的唯一标识符。
+    /// - `updated_at`：一个日期字段，用于存储文档的更新时间。
+    /// - `attributes`：一个存储字段，用于存储文档的属性。
+    /// - `chunk_id`：一个字符串字段，用于存储文档的分块 ID。
+    /// - `chunk_attributes`：一个 JSON 字段，用于存储文档的分块属性。
+    /// - `chunk_tokens`：一个字符串字段，用于存储文档的分块标记。
+    ///
+    /// 该函数返回一个包含所有字段的 `Schema` 实例。
     fn new() -> Self {
         let mut builder = Schema::builder();
 
@@ -99,6 +112,17 @@ impl IndexSchema {
         }
     }
 
+    /// 创建一个查询，用于在给定的语料库和来源 ID 下查询文档。
+    ///
+    /// 该函数创建了一个布尔查询，包含两个子查询：
+    /// - 必须匹配给定的语料库。
+    /// - 必须匹配给定的来源 ID。
+    ///
+    /// 参数：
+    /// - `corpus`：要查询的语料库。
+    /// - `source_id`：要查询的来源 ID。
+    ///
+    /// 返回值：一个实现了 `Query` 特性的查询对象。
     pub fn source_query(&self, corpus: &str, source_id: &str) -> impl Query {
         let source_id_query = TermQuery::new(
             Term::from_field_text(self.field_source_id, source_id),
