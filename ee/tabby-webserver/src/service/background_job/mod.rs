@@ -94,7 +94,7 @@ pub async fn start(
                     if let Err(err) = match event {
                         BackgroundJobEvent::SchedulerGitRepository(repository_config) => {
                             let job = SchedulerGitJob::new(repository_config);
-                            job.run(embedding.clone()).await
+                            job.run(embedding.clone(), git_repository_service.clone()).await
                         },
                         BackgroundJobEvent::SyncThirdPartyRepositories(integration_id) => {
                             let job = SyncIntegrationJob::new(integration_id);

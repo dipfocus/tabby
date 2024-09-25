@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use juniper::{graphql_object, ID};
+use tabby_db::IssueDAO;
 use validator::Validate;
 
 use super::{GitReference, RepositoryProvider};
@@ -93,4 +94,21 @@ pub trait GitRepositoryService: Send + Sync + RepositoryProvider {
     async fn create(&self, name: String, git_url: String) -> Result<ID>;
     async fn delete(&self, id: &ID) -> Result<bool>;
     async fn update(&self, id: &ID, name: String, git_url: String) -> Result<bool>;
+
+    async fn add_issue(
+        &self, 
+        source_id: &str, 
+        url: &str, 
+        title: &str, 
+        description: &str
+    ) -> Result<bool>;
+    async fn list_issues(
+        &self, 
+        source_id: &str, 
+        limit: Option<usize>, 
+        skip_id: Option<i32>, 
+        backwards: bool
+    ) -> Result<Vec<IssueDAO>>;
+
+    async fn get_issue(&self, url: &str) -> Result<IssueDAO>;
 }

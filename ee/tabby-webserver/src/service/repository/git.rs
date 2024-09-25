@@ -3,7 +3,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use juniper::ID;
 use tabby_common::config::{CodeRepository, RepositoryConfig};
-use tabby_db::{DbConn, RepositoryDAO};
+use tabby_db::{DbConn, RepositoryDAO, IssueDAO};
 use tabby_schema::{
     job::{JobInfo, JobService},
     repository::{
@@ -107,6 +107,37 @@ impl GitRepositoryService for GitRepositoryServiceImpl {
             )
             .await;
         Ok(true)
+    }
+    async fn add_issue(
+        &self, 
+        source_id: &str, 
+        url: &str, 
+        title: &str, 
+        description: &str
+    ) -> Result<bool> {
+        self.db
+            .add_issue(source_id, url, title, description)
+            .await?;
+        Ok(true)
+    }
+
+    async fn list_issues(
+        &self, 
+        source_id: &str,
+        limit: Option<usize>,
+        skip_id: Option<i32>,
+        backwards: bool,
+    ) -> Result<Vec<IssueDAO>> {
+        Ok(self.db
+            .list_issues(source_id, limit, skip_id, backwards)
+            .await?
+            .into_iter()
+            .map(|x| x.into())
+            .collect())
+    }
+
+    async fn get_issue(&self, url: &str) -> Result<IssueDAO> {
+        Ok(self.db.get_issue(url).await?.into())
     }
 }
 
