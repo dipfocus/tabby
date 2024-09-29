@@ -253,8 +253,8 @@ export class Commands {
         this.config.mutedNotifications = [];
       }
     },
-    "chat.explainCodeBlock": async () => {
-      this.sendMessageToChatPanel("Explain the selected code:");
+    "chat.explainCodeBlock": async (userCommand?: string) => {
+      this.sendMessageToChatPanel("Explain the selected code:".concat(userCommand ? `\n${userCommand}` : ""));
     },
     "chat.addRelevantContext": async () => {
       this.addRelevantContext();
@@ -280,7 +280,9 @@ export class Commands {
       this.sendMessageToChatPanel("Generate a unit test for the selected code:");
     },
     "chat.createPanel": async () => {
-      const panel = window.createWebviewPanel("tabby.chatView", "Tabby", ViewColumn.One, {});
+      const panel = window.createWebviewPanel("tabby.chatView", "Tabby", ViewColumn.One, {
+        retainContextWhenHidden: true,
+      });
 
       this.chatPanelViewProvider.resolveWebviewView(panel);
     },
