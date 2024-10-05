@@ -185,6 +185,7 @@ fn default_embedding_config() -> ModelConfig {
         num_gpu_layers: 9999,
         enable_fast_attention: None,
         context_size: default_context_size(),
+        additional_stop_words: None,
     })
 }
 
@@ -221,6 +222,7 @@ impl ModelConfig {
             num_gpu_layers,
             enable_fast_attention: None,
             context_size: default_context_size(),
+            additional_stop_words: None,
         })
     }
 }
@@ -252,6 +254,13 @@ pub struct HttpModelConfig {
     /// Used by Completion API to construct a chat model.
     #[builder(default)]
     pub chat_template: Option<String>,
+
+    /// Used by Chat/Completion API allowing users to get supported models info.
+    #[builder(default)]
+    pub supported_models: Option<Vec<String>>,
+
+    #[builder(default)]
+    pub additional_stop_words: Option<Vec<String>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -269,6 +278,9 @@ pub struct LocalModelConfig {
 
     #[serde(default = "default_context_size")]
     pub context_size: usize,
+
+    #[serde(default)]
+    pub additional_stop_words: Option<Vec<String>>,
 }
 
 fn default_parallelism() -> u8 {
