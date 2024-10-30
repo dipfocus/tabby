@@ -183,7 +183,8 @@ impl AnswerService {
                     }
                 };
 
-                if let Some(content) = chunk.choices[0].delta.content.as_deref() {
+                let content = chunk.choices.first().and_then(|x| x.delta.content.as_deref());
+                if let Some(content) = content {
                     yield Ok(ThreadRunItem::ThreadAssistantMessageContentDelta(ThreadAssistantMessageContentDelta {
                         delta: content.to_owned()
                     }));
@@ -571,6 +572,8 @@ pub async fn merge_code_snippets(
             result.extend(file_hits);
         }
     }
+
+    result.sort_by(|a, b| b.scores.rrf.total_cmp(&a.scores.rrf));
     result
 }
 

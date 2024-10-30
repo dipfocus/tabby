@@ -5001,6 +5001,7 @@ dependencies = [
  "llama-cpp-server",
  "nvml-wrapper",
  "openssl",
+ "regex",
  "reqwest",
  "reqwest-eventsource",
  "serde",
@@ -5210,6 +5211,7 @@ name = "tabby-schema"
 version = "0.19.0-dev.0"
 dependencies = [
  "anyhow",
+ "async-openai",
  "async-trait",
  "axum",
  "base64 0.22.1",
@@ -5223,6 +5225,7 @@ dependencies = [
  "strum 0.24.1",
  "tabby-common",
  "tabby-db",
+ "tabby-inference",
  "thiserror",
  "tokio",
  "tracing",
