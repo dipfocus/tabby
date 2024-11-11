@@ -13,8 +13,12 @@ import * as z from 'zod'
 
 import { MARKDOWN_CITATION_REGEX } from '@/lib/constants/regex'
 import { MessageAttachmentCode } from '@/lib/gql/generates/graphql'
-import { useEnterSubmit } from '@/lib/hooks/use-enter-submit'
-import { AttachmentDocItem, RelevantCodeContext } from '@/lib/types'
+import { makeFormErrorHandler } from '@/lib/tabby/gql'
+import {
+  AttachmentDocItem,
+  ExtendedCombinedError,
+  RelevantCodeContext
+} from '@/lib/types'
 import {
   cn,
   formatLineHashForCodeBrowser,
@@ -208,9 +212,9 @@ export function AssistantMessageSection({
   }
 
   const handleUpdateAssistantMessage = async (message: ConversationMessage) => {
-    const errorMessage = await onUpdateMessage(message)
-    if (errorMessage) {
-      return errorMessage
+    const error = await onUpdateMessage(message)
+    if (error) {
+      return error
     } else {
       setIsEditing(false)
     }
@@ -519,7 +523,9 @@ function MessageContentForm({
 }: {
   message: ConversationMessage
   onCancel: () => void
-  onSubmit: (newMessage: ConversationMessage) => Promise<string | void>
+  onSubmit: (
+    newMessage: ConversationMessage
+  ) => Promise<ExtendedCombinedError | void>
 }) {
   const formSchema = z.object({
     content: z.string().trim()
@@ -529,24 +535,22 @@ function MessageContentForm({
     defaultValues: { content: message.content }
   })
   const { isSubmitting } = form.formState
-  const { content } = form.watch()
-  const isEmptyContent = !content || isEmpty(content.trim())
   const [draftMessage] = useState<ConversationMessage>(message)
-  const { formRef, onKeyDown } = useEnterSubmit()
 
   const handleSubmit = async (values: z.infer<typeof formSchema>) => {
-    const errorMessage = await onSubmit({
+    const error = await onSubmit({
       ...draftMessage,
       content: values.content
     })
-    if (errorMessage) {
-      form.setError('root', { message: errorMessage })
+
+    if (error) {
+      makeFormErrorHandler(form)(error)
     }
   }
 
   return (
     <Form {...form}>
-      <form ref={formRef} onSubmit={form.handleSubmit(handleSubmit)}>
+      <form onSubmit={form.handleSubmit(handleSubmit)}>
         <FormField
           control={form.control}
           name="content"
@@ -558,7 +562,6 @@ function MessageContentForm({
                   minRows={2}
                   maxRows={20}
                   className="w-full rounded-lg border bg-background p-4 outline-ring"
-                  onKeyDown={onKeyDown}
                   {...field}
                 />
               </FormControl>
@@ -579,7 +582,7 @@ function MessageContentForm({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isEmptyContent || isSubmitting}>
+            <Button type="submit" disabled={isSubmitting}>
               {isSubmitting && (
                 <IconSpinner className="mr-2 h-4 w-4 animate-spin" />
               )}
