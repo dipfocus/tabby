@@ -7,8 +7,9 @@ use tabby_common::index::corpus;
 use tabby_inference::Embedding;
 
 pub use super::types::{
-    issue::IssueDocument as StructuredDocIssueFields, web::WebDocument as StructuredDocWebFields,
-    StructuredDoc, StructuredDocFields,
+    issue::IssueDocument as StructuredDocIssueFields,
+    pull::PullDocument as StructuredDocPullDocumentFields,
+    web::WebDocument as StructuredDocWebFields, StructuredDoc, StructuredDocFields,
 };
 use super::{create_structured_doc_builder, types::BuildStructuredDoc};
 use crate::{indexer::TantivyDocBuilder, Indexer};
@@ -26,13 +27,9 @@ impl StructuredDocIndexer {
     }
 
     pub async fn add(&self, updated_at: DateTime<Utc>, document: StructuredDoc) -> bool {
-        if document.should_skip() {
+        if !self.require_updates(updated_at, &document) {
             return false;
         }
-
-        if self.indexer.is_indexed_after(document.id(), updated_at) {
-            return false;
-        };
 
         stream! {
             let (id, s) = self.builder.build(document).await;
@@ -49,5 +46,19 @@ impl StructuredDocIndexer {
 
     pub fn commit(self) {
         self.indexer.commit();
+    }
+
+    fn require_updates(&self, updated_at: DateTime<Utc>, document: &StructuredDoc) -> bool {
+        if document.should_skip() {
+            return false;
+        }
+
+        if self.indexer.is_indexed_after(document.id(), updated_at)
+            && !self.indexer.has_failed_chunks(document.id())
+        {
+            return false;
+        };
+
+        true
     }
 }
