@@ -8,7 +8,11 @@ import { marked } from 'marked'
 import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
 
-import { ContextInfo, Maybe } from '@/lib/gql/generates/graphql'
+import {
+  ContextInfo,
+  Maybe,
+  MessageAttachmentClientCode
+} from '@/lib/gql/generates/graphql'
 import { AttachmentCodeItem, AttachmentDocItem } from '@/lib/types'
 import { cn, getContent } from '@/lib/utils'
 import { CodeBlock, CodeBlockProps } from '@/components/ui/codeblock'
@@ -43,7 +47,7 @@ type RelevantDocItem = {
 
 type RelevantCodeItem = {
   type: 'code'
-  data: AttachmentCodeItem
+  data: AttachmentCodeItem | MessageAttachmentClientCode
   isClient?: boolean
 }
 
@@ -65,6 +69,7 @@ export interface MessageMarkdownProps {
   headline?: boolean
   attachmentDocs?: Maybe<Array<AttachmentDocItem>>
   attachmentCode?: Maybe<Array<AttachmentCodeItem>>
+  attachmentClientCode?: Maybe<Array<MessageAttachmentClientCode>>
   onCopyContent?: ((value: string) => void) | undefined
   onApplyInEditor?: (
     content: string,
@@ -78,6 +83,7 @@ export interface MessageMarkdownProps {
   className?: string
   // wrapLongLines for code block
   canWrapLongLines?: boolean
+  supportsOnApplyInEditorV2: boolean
 }
 
 type MessageMarkdownContextValue = {
@@ -92,6 +98,7 @@ type MessageMarkdownContextValue = {
   contextInfo: ContextInfo | undefined
   fetchingContextInfo: boolean
   canWrapLongLines: boolean
+  supportsOnApplyInEditorV2: boolean
 }
 
 const MessageMarkdownContext = createContext<MessageMarkdownContextValue>(
@@ -102,6 +109,7 @@ export function MessageMarkdown({
   message,
   headline = false,
   attachmentDocs,
+  attachmentClientCode,
   attachmentCode,
   onApplyInEditor,
   onCopyContent,
@@ -109,6 +117,7 @@ export function MessageMarkdown({
   fetchingContextInfo,
   className,
   canWrapLongLines,
+  supportsOnApplyInEditorV2,
   ...rest
 }: MessageMarkdownProps) {
   const messageAttachments: MessageAttachments = useMemo(() => {
@@ -117,13 +126,20 @@ export function MessageMarkdown({
         type: 'doc',
         data: item
       })) ?? []
+
+    const clientCode: MessageAttachments =
+      attachmentClientCode?.map(item => ({
+        type: 'code',
+        data: item
+      })) ?? []
+
     const code: MessageAttachments =
       attachmentCode?.map(item => ({
         type: 'code',
         data: item
       })) ?? []
-    return compact([...docs, ...code])
-  }, [attachmentDocs, attachmentCode])
+    return compact([...docs, ...clientCode, ...code])
+  }, [attachmentDocs, attachmentClientCode, attachmentCode])
 
   const processMessagePlaceholder = (text: string) => {
     const elements: React.ReactNode[] = []
@@ -183,7 +199,8 @@ export function MessageMarkdown({
         onCodeCitationMouseLeave: rest.onCodeCitationMouseLeave,
         contextInfo,
         fetchingContextInfo: !!fetchingContextInfo,
-        canWrapLongLines: !!canWrapLongLines
+        canWrapLongLines: !!canWrapLongLines,
+        supportsOnApplyInEditorV2
       }}
     >
       <MemoizedReactMarkdown
@@ -251,6 +268,7 @@ export function MessageMarkdown({
                 onApplyInEditor={onApplyInEditor}
                 onCopyContent={onCopyContent}
                 canWrapLongLines={canWrapLongLines}
+                supportsOnApplyInEditorV2={supportsOnApplyInEditorV2}
                 {...props}
               />
             )
@@ -300,9 +318,17 @@ export function ErrorMessageBlock({
 }
 
 function CodeBlockWrapper(props: CodeBlockProps) {
-  const { canWrapLongLines } = useContext(MessageMarkdownContext)
+  const { canWrapLongLines, supportsOnApplyInEditorV2 } = useContext(
+    MessageMarkdownContext
+  )
 
-  return <CodeBlock {...props} canWrapLongLines={canWrapLongLines} />
+  return (
+    <CodeBlock
+      {...props}
+      canWrapLongLines={canWrapLongLines}
+      supportsOnApplyInEditorV2={supportsOnApplyInEditorV2}
+    />
+  )
 }
 
 function CitationTag({

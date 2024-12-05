@@ -32,6 +32,7 @@ import { EmptyScreen } from './empty-screen'
 import { QuestionAnswerList } from './question-answer'
 
 type ChatContextValue = {
+  threadId: string | undefined
   isLoading: boolean
   qaPairs: QuestionAnswerPair[]
   handleMessageAction: (
@@ -42,14 +43,14 @@ type ChatContextValue = {
   onClearMessages: () => void
   container?: HTMLDivElement
   onCopyContent?: (value: string) => void
-  onApplyInEditor?: (
-    content: string,
-    opts?: { languageId: string; smart: boolean }
-  ) => void
+  onApplyInEditor?:
+    | ((content: string) => void)
+    | ((content: string, opts?: { languageId: string; smart: boolean }) => void)
   relevantContext: Context[]
   activeSelection: Context | null
   removeRelevantContext: (index: number) => void
   chatInputRef: RefObject<HTMLTextAreaElement>
+  supportsOnApplyInEditorV2: boolean
 }
 
 export const ChatContext = React.createContext<ChatContextValue>(
@@ -80,11 +81,11 @@ interface ChatProps extends React.ComponentProps<'div'> {
   promptFormClassname?: string
   onCopyContent?: (value: string) => void
   onSubmitMessage?: (msg: string, relevantContext?: Context[]) => Promise<void>
-  onApplyInEditor?: (
-    content: string,
-    opts?: { languageId: string; smart: boolean }
-  ) => void
+  onApplyInEditor?:
+    | ((content: string) => void)
+    | ((content: string, opts?: { languageId: string; smart: boolean }) => void)
   chatInputRef: RefObject<HTMLTextAreaElement>
+  supportsOnApplyInEditorV2: boolean
 }
 
 function ChatRenderer(
@@ -104,7 +105,8 @@ function ChatRenderer(
     onCopyContent,
     onSubmitMessage,
     onApplyInEditor,
-    chatInputRef
+    chatInputRef,
+    supportsOnApplyInEditorV2
   }: ChatProps,
   ref: React.ForwardedRef<ChatRef>
 ) {
@@ -520,6 +522,7 @@ function ChatRenderer(
   return (
     <ChatContext.Provider
       value={{
+        threadId,
         isLoading,
         qaPairs,
         onNavigateToContext,
@@ -531,7 +534,8 @@ function ChatRenderer(
         relevantContext,
         removeRelevantContext,
         chatInputRef,
-        activeSelection
+        activeSelection,
+        supportsOnApplyInEditorV2
       }}
     >
       <div className="flex justify-center overflow-x-hidden">

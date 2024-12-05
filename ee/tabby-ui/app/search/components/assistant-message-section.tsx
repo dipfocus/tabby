@@ -12,7 +12,11 @@ import { Context } from 'tabby-chat-panel/index'
 import * as z from 'zod'
 
 import { MARKDOWN_CITATION_REGEX } from '@/lib/constants/regex'
-import { MessageAttachmentCode } from '@/lib/gql/generates/graphql'
+import {
+  Maybe,
+  MessageAttachmentClientCode,
+  MessageAttachmentCode
+} from '@/lib/gql/generates/graphql'
 import { makeFormErrorHandler } from '@/lib/tabby/gql'
 import {
   AttachmentDocItem,
@@ -56,6 +60,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from '@/components/ui/tooltip'
+import { ChatContext } from '@/components/chat/chat'
 import { CodeReferences } from '@/components/chat/code-references'
 import { CopyButton } from '@/components/copy-button'
 import {
@@ -67,19 +72,21 @@ import {
 import { ConversationMessage, SearchContext, SOURCE_CARD_STYLE } from './search'
 
 export function AssistantMessageSection({
+  className,
   message,
   showRelatedQuestion,
   isLoading,
   isLastAssistantMessage,
   isDeletable,
-  className
+  clientCode
 }: {
+  className?: string
   message: ConversationMessage
   showRelatedQuestion: boolean
   isLoading?: boolean
   isLastAssistantMessage?: boolean
   isDeletable?: boolean
-  className?: string
+  clientCode?: Maybe<Array<MessageAttachmentClientCode>>
 }) {
   const {
     onRegenerateResponse,
@@ -93,6 +100,8 @@ export function AssistantMessageSection({
     isThreadOwner,
     onUpdateMessage
   } = useContext(SearchContext)
+
+  const { supportsOnApplyInEditorV2 } = useContext(ChatContext)
 
   const [isEditing, setIsEditing] = useState(false)
   const [showMoreSource, setShowMoreSource] = useState(false)
@@ -130,16 +139,29 @@ export function AssistantMessageSection({
 
   const IconAnswer = isLoading ? IconSpinner : IconSparkles
 
-  const messageAttachmentDocs = message?.attachment?.doc
-  const messageAttachmentCode = message?.attachment?.code
+  const relevantCodeGitURL = message?.attachment?.code?.[0]?.gitUrl || ''
 
-  const totalHeightInRem = messageAttachmentDocs?.length
-    ? Math.ceil(messageAttachmentDocs.length / 4) * SOURCE_CARD_STYLE.expand +
-      0.5 * Math.floor(messageAttachmentDocs.length / 4) +
-      0.5
-    : 0
+  const clientCodeContexts: RelevantCodeContext[] = useMemo(() => {
+    if (!clientCode?.length) return []
+    return (
+      clientCode.map(code => {
+        const { startLine, endLine } = getRangeFromAttachmentCode(code)
 
-  const relevantCodeContexts: RelevantCodeContext[] = useMemo(() => {
+        return {
+          kind: 'file',
+          range: {
+            start: startLine,
+            end: endLine
+          },
+          filepath: code.filepath || '',
+          content: code.content,
+          git_url: relevantCodeGitURL
+        }
+      }) ?? []
+    )
+  }, [clientCode, relevantCodeGitURL])
+
+  const serverCodeContexts: RelevantCodeContext[] = useMemo(() => {
     return (
       message?.attachment?.code?.map(code => {
         const { startLine, endLine } = getRangeFromAttachmentCode(code)
@@ -159,7 +181,25 @@ export function AssistantMessageSection({
         }
       }) ?? []
     )
-  }, [message?.attachment?.code])
+  }, [clientCode, message?.attachment?.code])
+
+  const messageAttachmentClientCode = useMemo(() => {
+    return clientCode?.map(o => ({
+      ...o,
+      gitUrl: relevantCodeGitURL
+    }))
+  }, [clientCode, relevantCodeGitURL])
+
+  const messageAttachmentDocs = message?.attachment?.doc
+  const messageAttachmentCodeLen =
+    (messageAttachmentClientCode?.length || 0) +
+    (message.attachment?.code?.length || 0)
+
+  const totalHeightInRem = messageAttachmentDocs?.length
+    ? Math.ceil(messageAttachmentDocs.length / 4) * SOURCE_CARD_STYLE.expand +
+      0.5 * Math.floor(messageAttachmentDocs.length / 4) +
+      0.5
+    : 0
 
   const onCodeContextClick = (ctx: Context) => {
     if (!ctx.filepath) return
@@ -212,7 +252,9 @@ export function AssistantMessageSection({
   }
 
   const onCodeCitationClick = (code: MessageAttachmentCode) => {
-    openCodeBrowserTab(code)
+    if (code.gitUrl) {
+      openCodeBrowserTab(code)
+    }
   }
 
   const handleUpdateAssistantMessage = async (message: ConversationMessage) => {
@@ -291,14 +333,16 @@ export function AssistantMessageSection({
           )}
         </div>
 
-        {/* code search hits */}
-        {messageAttachmentCode && messageAttachmentCode.length > 0 && (
+        {/* attachment clientCode & code */}
+        {messageAttachmentCodeLen > 0 && (
           <CodeReferences
-            contexts={relevantCodeContexts}
+            clientContexts={clientCodeContexts}
+            contexts={serverCodeContexts}
             className="mt-1 text-sm"
             onContextClick={onCodeContextClick}
             enableTooltip={enableDeveloperMode}
             showExternalLink={false}
+            showClientCodeIcon
             onTooltipClick={() => {
               setConversationIdForDev(message.id)
               setDevPanelOpen(true)
@@ -321,13 +365,15 @@ export function AssistantMessageSection({
             <MessageMarkdown
               message={message.content}
               attachmentDocs={messageAttachmentDocs}
-              attachmentCode={messageAttachmentCode}
+              attachmentClientCode={messageAttachmentClientCode}
+              attachmentCode={message.attachment?.code}
               onCodeCitationClick={onCodeCitationClick}
               onCodeCitationMouseEnter={onCodeCitationMouseEnter}
               onCodeCitationMouseLeave={onCodeCitationMouseLeave}
               contextInfo={contextInfo}
               fetchingContextInfo={fetchingContextInfo}
               canWrapLongLines={!isLoading}
+              supportsOnApplyInEditorV2={supportsOnApplyInEditorV2}
             />
             {/* if isEditing, do not display error message block */}
             {message.error && <ErrorMessageBlock error={message.error} />}

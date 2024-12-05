@@ -244,6 +244,11 @@ export class WebviewHelper {
     }
   }
 
+  public isSupportedSchemeForActiveSelection(scheme: string) {
+    const supportedSchemes = ["file", "untitled"];
+    return supportedSchemes.includes(scheme);
+  }
+
   public sendMessageToChatPanel(message: ChatMessage) {
     this.logger.info(`Sending message to chat panel: ${JSON.stringify(message)}`);
     this.client?.sendMessage(message);
@@ -334,7 +339,7 @@ export class WebviewHelper {
   }
 
   public async syncActiveSelection(editor: TextEditor | undefined) {
-    if (!editor) {
+    if (!editor || !this.isSupportedSchemeForActiveSelection(editor.document.uri.scheme)) {
       this.syncActiveSelectionToChatPanel(null);
       return;
     }
@@ -362,19 +367,13 @@ export class WebviewHelper {
   }
 
   public addTextEditorEventListeners() {
-    const supportSchemes = ["file", "untitled"];
     window.onDidChangeActiveTextEditor((e) => {
-      if (e && !supportSchemes.includes(e.document.uri.scheme)) {
-        this.syncActiveSelection(undefined);
-        return;
-      }
-
       this.syncActiveSelection(e);
     });
 
     window.onDidChangeTextEditorSelection((e) => {
       // This listener only handles text files.
-      if (!supportSchemes.includes(e.textEditor.document.uri.scheme)) {
+      if (!this.isSupportedSchemeForActiveSelection(e.textEditor.document.uri.scheme)) {
         return;
       }
       this.syncActiveSelection(e.textEditor);
@@ -387,13 +386,43 @@ export class WebviewHelper {
     const serverInfo = await this.agent.fetchServerInfo();
     if (serverInfo.health && serverInfo.health["webserver"]) {
       const serverInfo = await this.agent.fetchServerInfo();
-      this.displayChatPage(serverInfo.config.endpoint);
+      this.displayChatPage(serverInfo.config.endpoint, { force: true });
     } else {
       this.displayDisconnectedPage();
     }
   }
 
   public createChatClient(webview: Webview) {
+    const getIndentInfo = (document: TextDocument, selection: Selection) => {
+      // Determine the indentation for the content
+      // The calculation is based solely on the indentation of the first line
+      const lineText = document.lineAt(selection.start.line).text;
+      const match = lineText.match(/^(\s*)/);
+      const indent = match ? match[0] : "";
+
+      // Determine the indentation for the content's first line
+      // Note:
+      // If using spaces, selection.start.character = 1 means 1 space
+      // If using tabs, selection.start.character = 1 means 1 tab
+      const indentUnit = indent[0];
+      const indentAmountForTheFirstLine = Math.max(indent.length - selection.start.character, 0);
+      const indentForTheFirstLine = indentUnit?.repeat(indentAmountForTheFirstLine) || "";
+
+      return { indent, indentForTheFirstLine };
+    };
+
+    const applyInEditor = (editor: TextEditor, content: string) => {
+      const document = editor.document;
+      const selection = editor.selection;
+      const { indent, indentForTheFirstLine } = getIndentInfo(document, selection);
+      // Indent the content
+      const indentedContent = indentForTheFirstLine + content.replaceAll("\n", "\n" + indent);
+      // Apply into the editor
+      editor.edit((editBuilder) => {
+        editBuilder.replace(selection, indentedContent);
+      });
+    };
+
     return createClient(webview, {
       navigate: async (context: Context, opts?: NavigateOpts) => {
         if (opts?.openInEditor) {
@@ -431,7 +460,7 @@ export class WebviewHelper {
           relevantContext: [],
         };
         // FIXME: after synchronizing the activeSelection, perhaps there's no need to include activeSelection in the message.
-        if (editor) {
+        if (editor && this.isSupportedSchemeForActiveSelection(editor.document.uri.scheme)) {
           const fileContext = await getFileContextFromSelection(editor, this.gitProvider);
           if (fileContext)
             // active selection
@@ -444,41 +473,20 @@ export class WebviewHelper {
         // FIXME: maybe deduplicate on chatMessage.relevantContext
         this.sendMessage(chatMessage);
       },
-      onApplyInEditor: async (content: string, opts?: { languageId: string; smart: boolean }) => {
-        const getIndentInfo = (document: TextDocument, selection: Selection) => {
-          // Determine the indentation for the content
-          // The calculation is based solely on the indentation of the first line
-          const lineText = document.lineAt(selection.start.line).text;
-          const match = lineText.match(/^(\s*)/);
-          const indent = match ? match[0] : "";
-
-          // Determine the indentation for the content's first line
-          // Note:
-          // If using spaces, selection.start.character = 1 means 1 space
-          // If using tabs, selection.start.character = 1 means 1 tab
-          const indentUnit = indent[0];
-          const indentAmountForTheFirstLine = Math.max(indent.length - selection.start.character, 0);
-          const indentForTheFirstLine = indentUnit?.repeat(indentAmountForTheFirstLine) || "";
-
-          return { indent, indentForTheFirstLine };
-        };
-
-        const applyInEditor = (editor: TextEditor) => {
-          const document = editor.document;
-          const selection = editor.selection;
-          const { indent, indentForTheFirstLine } = getIndentInfo(document, selection);
-          // Indent the content
-          const indentedContent = indentForTheFirstLine + content.replaceAll("\n", "\n" + indent);
-          // Apply into the editor
-          editor.edit((editBuilder) => {
-            editBuilder.replace(selection, indentedContent);
-          });
-        };
+      onApplyInEditor: async (content: string) => {
+        const editor = window.activeTextEditor;
+        if (!editor) {
+          window.showErrorMessage("No active editor found.");
+          return;
+        }
+        applyInEditor(editor, content);
+      },
+      onApplyInEditorV2: async (content: string, opts?: { languageId: string; smart: boolean }) => {
         const smartApplyInEditor = async (editor: TextEditor, opts: { languageId: string; smart: boolean }) => {
           if (editor.document.languageId !== opts.languageId) {
             this.logger.debug("Editor's languageId:", editor.document.languageId, "opts.languageId:", opts.languageId);
             window.showInformationMessage("The active editor is not in the correct language. Did normal apply.");
-            applyInEditor(editor);
+            applyInEditor(editor, content);
             return;
           }
 
@@ -524,7 +532,7 @@ export class WebviewHelper {
           return;
         }
         if (!opts || !opts.smart) {
-          applyInEditor(editor);
+          applyInEditor(editor, content);
         } else {
           smartApplyInEditor(editor, opts);
         }
