@@ -79,7 +79,10 @@ export const ChatSideBar: React.FC<ChatSideBarProps> = ({
     onApplyInEditor(_content) {},
     onLoaded() {},
     onCopy(_content) {},
-    onKeyboardEvent() {}
+    onKeyboardEvent() {},
+    async openInEditor() {
+      return false
+    }
   })
 
   const getPrompt = ({ action }: QuickActionEventPayload) => {

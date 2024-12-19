@@ -6,6 +6,7 @@ import { LetterCaseCapitalizeIcon } from '@radix-ui/react-icons'
 import {
   AlignJustify,
   AtSign,
+  Bell,
   Blocks,
   BookOpenText,
   Box,
@@ -39,6 +40,7 @@ import {
   Share2,
   Sparkles,
   SquareActivity,
+  SquareChevronRight,
   Star,
   Tag,
   WrapText,
@@ -1730,11 +1732,22 @@ function IconGitMerge({
   return <GitMerge className={cn('h-4 w-4', className)} {...props} />
 }
 
+function IconSquareChevronRight({
+  className,
+  ...props
+}: React.ComponentProps<typeof SquareChevronRight>) {
+  return <SquareChevronRight className={cn('h-4 w-4', className)} {...props} />
+}
+
 function IconFileSearch2({
   className,
   ...props
 }: React.ComponentProps<typeof FileSearch2>) {
   return <FileSearch2 className={cn('h-4 w-4', className)} {...props} />
+}
+
+function IconBell({ className, ...props }: React.ComponentProps<typeof Bell>) {
+  return <Bell className={cn('h-4 w-4', className)} {...props} />
 }
 
 export {
@@ -1848,5 +1861,7 @@ export {
   IconCircleDot,
   IconGitPullRequest,
   IconGitMerge,
-  IconFileSearch2
+  IconSquareChevronRight,
+  IconFileSearch2,
+  IconBell
 }

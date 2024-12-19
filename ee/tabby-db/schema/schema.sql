@@ -182,6 +182,7 @@ CREATE TABLE thread_messages(
   doc_attachments BLOB,
   created_at TIMESTAMP NOT NULL DEFAULT(DATETIME('now')),
   updated_at TIMESTAMP NOT NULL DEFAULT(DATETIME('now')),
+  code_source_id VARCHAR(255),
   FOREIGN KEY(thread_id) REFERENCES threads(id) ON DELETE CASCADE
 );
 CREATE TABLE web_documents(
@@ -222,4 +223,23 @@ updated_at TIMESTAMP NOT NULL DEFAULT(DATETIME('now')),
 FOREIGN KEY(user_group_id) REFERENCES user_groups(id) ON DELETE CASCADE,
 -- access_policy is unique per source_id and user_group_id
   CONSTRAINT idx_unique_source_id_user_group_id UNIQUE(source_id, user_group_id)
+);
+CREATE TABLE notifications(
+  id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+  created_at TIMESTAMP NOT NULL DEFAULT(DATETIME('now')),
+  updated_at TIMESTAMP NOT NULL DEFAULT(DATETIME('now')),
+  -- enum of admin, all_user
+  recipient VARCHAR(255) NOT NULL DEFAULT 'admin',
+  -- content of notification, in markdown format.
+  content TEXT NOT NULL
+);
+CREATE TABLE read_notifications(
+  id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  notification_id INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT(DATETIME('now')),
+  updated_at TIMESTAMP NOT NULL DEFAULT(DATETIME('now')),
+  CONSTRAINT idx_unique_user_id_notification_id UNIQUE(user_id, notification_id),
+  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY(notification_id) REFERENCES notifications(id) ON DELETE CASCADE
 );

@@ -1,6 +1,13 @@
 import React, { RefObject } from 'react'
 import { compact, findIndex, isEqual, some, uniqWith } from 'lodash-es'
-import type { Context, FileContext, NavigateOpts } from 'tabby-chat-panel'
+import type {
+  Context,
+  FileContext,
+  FileLocation,
+  LookupSymbolHint,
+  NavigateOpts,
+  SymbolInfo
+} from 'tabby-chat-panel'
 
 import { ERROR_CODE_NOT_FOUND } from '@/lib/constants'
 import {
@@ -46,6 +53,11 @@ type ChatContextValue = {
   onApplyInEditor?:
     | ((content: string) => void)
     | ((content: string, opts?: { languageId: string; smart: boolean }) => void)
+  onLookupSymbol?: (
+    symbol: string,
+    hints?: LookupSymbolHint[] | undefined
+  ) => Promise<SymbolInfo | undefined>
+  openInEditor?: (target: FileLocation) => void
   relevantContext: Context[]
   activeSelection: Context | null
   removeRelevantContext: (index: number) => void
@@ -84,6 +96,11 @@ interface ChatProps extends React.ComponentProps<'div'> {
   onApplyInEditor?:
     | ((content: string) => void)
     | ((content: string, opts?: { languageId: string; smart: boolean }) => void)
+  onLookupSymbol?: (
+    symbol: string,
+    hints?: LookupSymbolHint[] | undefined
+  ) => Promise<SymbolInfo | undefined>
+  openInEditor?: (target: FileLocation) => void
   chatInputRef: RefObject<HTMLTextAreaElement>
   supportsOnApplyInEditorV2: boolean
 }
@@ -105,6 +122,8 @@ function ChatRenderer(
     onCopyContent,
     onSubmitMessage,
     onApplyInEditor,
+    onLookupSymbol,
+    openInEditor,
     chatInputRef,
     supportsOnApplyInEditorV2
   }: ChatProps,
@@ -257,7 +276,7 @@ function ChatRenderer(
   }
 
   React.useEffect(() => {
-    if (!isLoading || !qaPairs?.length || !answer) return
+    if (!qaPairs?.length || !answer) return
 
     const lastQaPairs = qaPairs[qaPairs.length - 1]
 
@@ -531,6 +550,8 @@ function ChatRenderer(
         container,
         onCopyContent,
         onApplyInEditor,
+        onLookupSymbol,
+        openInEditor,
         relevantContext,
         removeRelevantContext,
         chatInputRef,
