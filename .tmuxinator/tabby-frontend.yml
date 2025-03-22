@@ -1,0 +1,10 @@
+name: tabby
+root: ./
+
+windows:
+  - caddy:
+      panes:
+        - caddy run --watch --config ee/tabby-webserver/development/Caddyfile
+  - ui:
+      panes:
+        - cd ee/tabby-ui && pnpm dev

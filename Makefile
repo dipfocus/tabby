@@ -19,7 +19,10 @@ update-db-schema:
 
 dev:
 	tmuxinator start -p .tmuxinator/tabby.yml
-		
+
+frontend:
+	tmuxinator start -p .tmuxinator/tabby-frontend.yml
+
 bump-version:
 	cargo ws version --force "*" --no-individual-tags --allow-branch "main"
 
