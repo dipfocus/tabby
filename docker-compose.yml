@@ -1,0 +1,42 @@
+version: '3.9'
+
+services:
+  tabby-server:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.mac
+      args:
+        UBUNTU_VERSION: 22.04
+        RUST_TOOLCHAIN: stable
+    image: tabby-server:latest
+    container_name: tabby-server
+    command: ["serve", "--port", "8081"]
+    ports:
+      - "8081:8081"
+    volumes:
+      - ${HOST_DATA_PATH:-${HOME}/.tabby}:${TABBY_ROOT:-/data}
+    environment:
+      - TABBY_ROOT=${TABBY_ROOT:-/data}
+    restart: unless-stopped
+
+  # must modify Caddyfile to use tabby-server: reverse_proxy tabby-server:8081
+  # tabby-ui:
+  #   build:
+  #     context: .
+  #     dockerfile: docker/Dockerfile.ui
+  #     args:
+  #       UBUNTU_VERSION: 22.04
+  #   image: tabby-ui:latest
+  #   container_name: tabby-ui
+  #   entrypoint: ["/entrypoint.sh"]
+  #   working_dir: /root/workspace
+  #   ports:
+  #     - "3000:3000"  # pnpm dev
+  #     - "8080:8080"  # caddy
+  #   volumes:
+  #     - ${HOST_DATA_PATH:-${HOME}/.tabby}:${TABBY_ROOT:-/data}
+  #   environment:
+  #     - TABBY_ROOT=${TABBY_ROOT:-/data}
+
+
+  #   restart: unless-stopped

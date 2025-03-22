@@ -1,0 +1,60 @@
+# syntax=docker/dockerfile:1.4
+ARG UBUNTU_VERSION=22.04
+FROM ubuntu:${UBUNTU_VERSION} AS build
+
+ARG RUST_TOOLCHAIN=stable
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        curl \
+        ca-certificates \
+        build-essential \
+        pkg-config \
+        libssl-dev \
+        protobuf-compiler \
+        git \
+        cmake \
+        clang \
+        && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+RUN curl https://sh.rustup.rs -sSf | bash -s -- --default-toolchain ${RUST_TOOLCHAIN} -y
+RUN rustc --version && cargo --version
+
+WORKDIR /root/workspace
+RUN mkdir -p /opt/tabby/bin
+RUN mkdir -p /opt/tabby/lib
+RUN mkdir -p target
+
+COPY . .
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/root/workspace/target \
+    cargo build --features prod --release && \
+    cp target/release/llama-server /opt/tabby/bin/ && \
+    cp target/release/tabby /opt/tabby/bin/
+
+FROM ubuntu:${UBUNTU_VERSION} AS runtime
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        git curl unzip \
+        openssh-client ca-certificates \
+        libgomp1 \
+        && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Install katana
+RUN curl -L https://github.com/projectdiscovery/katana/releases/download/v1.1.2/katana_1.1.2_linux_amd64.zip -o katana.zip \
+  && unzip katana.zip katana \
+  && mv katana /usr/bin/ \
+  && rm katana.zip
+
+RUN git config --system --add safe.directory "*"
+
+COPY --from=build /opt/tabby /opt/tabby
+ENV PATH="$PATH:/opt/tabby/bin"
+ENV TABBY_ROOT=/data
+
+ENTRYPOINT ["/opt/tabby/bin/tabby"]

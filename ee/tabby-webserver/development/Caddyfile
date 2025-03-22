@@ -23,6 +23,7 @@
 
 	handle @backend {
 		reverse_proxy localhost:8081
+		# reverse_proxy tabby-server:8081
 	}
 
 	handle /* {
